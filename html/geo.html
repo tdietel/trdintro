@@ -22,8 +22,13 @@
 
 		var group, camera, scene, renderer;
 
-		var pad_width = 8;
-		var pad_length = 90;
+		const pad_width = 8;
+		const pad_length = 90;
+		const nrows = 16;
+
+		const gas_width = 144*pad_width;
+		const gas_length = nrows*pad_length;
+
 		// var min_pad =  17;
 		// var max_pad = 37;
 		// var min_row = 0;
@@ -36,20 +41,21 @@
 
 		function create_backpanel() {
 
-			var geometry = new THREE.BoxBufferGeometry( 144*pad_width+20, 20, 16*pad_length+20 );
-			// var material = new THREE.MeshNormalMaterial();
-			// var material = new THREE.MeshPhysicalMaterial();
+			var bplen = gas_length+20;
+			var bpwid = gas_width+20;
+			var geometry = new THREE.BoxBufferGeometry(bpwid, 20, bplen);
+
 			var material = new THREE.MeshLambertMaterial( { color: 0xdddddd } )
 
 			var backpanel = new THREE.Mesh( geometry, material );
-			backpanel.position.y = 30;
+			backpanel.position.y = 10.1;
 
 			return backpanel;
 		}
 
 		function create_radiator() {
 
-			var geometry = new THREE.BoxBufferGeometry( 144*pad_width, 50, 16*pad_length );
+			var geometry = new THREE.BoxBufferGeometry( gas_width, 50, gas_length );
 			var material = new THREE.MeshLambertMaterial( { color: 0xe0e0e0 } )
 
 			var mesh = new THREE.Mesh( geometry, material );
@@ -58,12 +64,73 @@
 			return mesh;
 		}
 
+		function create_pads() {
 
-		radiator = Mesh(
-    BoxBufferGeometry(roc_width, 5, roc_length),
-    MeshPhysicalMaterial(color='white'),
-    position=[0,-5.5,0]
-)
+			const sp=0.2;
+			var pad = new THREE.PlaneBufferGeometry( pad_width-sp, pad_length-sp );
+
+			var material = new THREE.MeshLambertMaterial( {
+				color: 0x209090,
+				side: THREE.DoubleSide
+			} )
+
+			var mesh = new THREE.InstancedMesh( pad, material, 144*nrows );
+			var dummy = new THREE.Object3D();
+
+			for ( var i = 0; i < 144*nrows; i ++ ) {
+
+				var x = (i%144 + 0.5) * pad_width - 0.5*gas_width;
+				var z = (Math.floor(i/144) + 0.5) * pad_length - 0.5*gas_length;
+
+				dummy.position.set(x, 0, z);
+				dummy.rotation.set(0.5*Math.PI,0,0);
+				dummy.updateMatrix();
+
+				mesh.setMatrixAt( i, dummy.matrix );
+			}
+
+			return mesh;
+		}
+
+
+		function create_anode_wires() {
+
+			const material = new THREE.LineBasicMaterial( { color: 0xFF0000 } );
+			const points = [];
+
+			for ( let z = 2.5; z < 0.5*gas_length; z += 5 ) {
+				points.push( new THREE.Vector3( +0.5*gas_width, -3.5, z ) );
+				points.push( new THREE.Vector3( -0.5*gas_width, -3.5, z ) );
+				points.push( new THREE.Vector3( +0.5*gas_width, -3.5, -z ) );
+				points.push( new THREE.Vector3( -0.5*gas_width, -3.5, -z ) );
+			}
+
+			const geometry = new THREE.BufferGeometry().setFromPoints( points );
+			const lines = new THREE.LineSegments( geometry, material );
+
+			return lines
+		}
+
+		function create_cathode_wires() {
+
+			const material = new THREE.LineBasicMaterial( { color: 0x0000c0 } );
+
+			const points = [];
+
+			for ( let z = 0; z < 0.5*gas_length; z += 2.5 ) {
+				points.push( new THREE.Vector3( +0.5*gas_width, -7.0, z ) );
+				points.push( new THREE.Vector3( -0.5*gas_width, -7.0, z ) );
+				points.push( new THREE.Vector3( +0.5*gas_width, -7.0, -z ) );
+				points.push( new THREE.Vector3( -0.5*gas_width, -7.0, -z ) );
+			}
+
+			const geometry = new THREE.BufferGeometry().setFromPoints( points );
+			const lines = new THREE.LineSegments( geometry, material );
+
+			return lines
+		}
+
+
 
 		function init() {
 
@@ -88,19 +155,18 @@
 			controls.maxDistance = 3000;
 			// controls.maxPolarAngle = Math.PI / 2;
 
+			// add lights
 			scene.add( new THREE.AmbientLight( 0x222222 ) );
-
-			// light
-
-			var light = new THREE.PointLight( 0xffffff, 1 );
-			camera.add( light );
+			camera.add( new THREE.PointLight( 0xffffff, 1 ) );
 
 			// helper
-
 			scene.add( new THREE.AxesHelper( 20 ) );
 
 			scene.add( create_backpanel() );
 			scene.add( create_radiator() );
+			scene.add( create_pads() );
+			scene.add( create_anode_wires() );
+			scene.add( create_cathode_wires() );
 
 // 			backpanel = Mesh(
 // 				new THREE.BoxBufferGeometry(roc_width+2, 2, roc_length+2),
